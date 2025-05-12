@@ -1,0 +1,67 @@
+.logo-box {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 2rem;
+    border-radius: 2rem;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.logo-aad {
+    width: 120px;
+    height: auto;
+}
+
+.fault-codes-display {
+    font-size: 0.9rem;
+    color: #444;
+    text-align: center;
+}
+
+.current-box-temperature {
+    width: 200px;
+    background-color: #f3f4f6;
+    color: #111;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 9999px;
+    text-align: center;
+    outline: none;
+}
+
+.outer-box-temperature {
+    display: flex;
+    flex-direction: column;
+    width: 200px;
+    gap: 0.4rem;
+}
+
+.inner-box-temperature {
+    background-color: #f3f4f6;
+    color: #111;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.85rem;
+    border-radius: 0.5rem;
+    border: 1px solid #ccc;
+    text-align: center;
+}
+
+.start-script-button {
+    background-color: #4b5563;
+    color: white;
+    padding: 0.6rem 1.5rem;
+    font-size: 1rem;
+    border: none;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.start-script-button:hover {
+    background-color: #374151;
+}
