@@ -8,10 +8,20 @@ class Interface extends Component {
     state = {
         logs: [],
         currentTemperature: '...', // State to store the current temperature
+        readings: [], // State to store readings from the endpoint
     };
 
-
 componentDidMount() {
+    // Fetch readings from the endpoint
+    fetch('http://localhost:8080/api/temperature')
+        .then((response) => response.json())
+        .then((data) => {
+            this.setState({ readings: data.slice(-5) }); // Keep only the last 5 readings
+        })
+        .catch((error) => {
+            console.error('Failed to fetch readings:', error);
+        });
+
     // Initialize WebSocketClient and connect
     this.webSocketClient = new WebSocketClient((data) => {
         try {
@@ -22,6 +32,15 @@ componentDidMount() {
             } else {
                 this.setState({ currentTemperature: 'Invalid data received' });
             }
+
+            // Add new reading to the list and keep only the last 5
+            const newReading = {
+                temperature: `${parsedData.temperature_1}°C`,
+                timestamp: new Date().toISOString(),
+            };
+            this.setState((prevState) => ({
+                readings: [...prevState.readings, newReading].slice(-5),
+            }));
         } catch (err) {
             console.error('Failed to parse WebSocket data:', err);
             this.setState({ currentTemperature: 'Error parsing data' });
@@ -83,11 +102,15 @@ componentDidMount() {
                 />
 
                 <div className="outer-box-temperature">
-                    <input type="text" readOnly value="24.5°C @ 2025-05-08 10:00" className="inner-box-temperature" />
-                    <input type="text" readOnly value="24.3°C @ 2025-05-08 09:50" className="inner-box-temperature" />
-                    <input type="text" readOnly value="24.2°C @ 2025-05-08 09:40" className="inner-box-temperature" />
-                    <input type="text" readOnly value="24.0°C @ 2025-05-08 09:30" className="inner-box-temperature" />
-                    <input type="text" readOnly value="23.9°C @ 2025-05-08 09:20" className="inner-box-temperature" />
+                    {this.state.readings.slice(0, 5).map((reading, index) => (
+                        <input
+                            key={index}
+                            type="text"
+                            readOnly
+                            value={`${reading.temperature} @ ${new Date(reading.timestamp).toLocaleString()}`}
+                            className="inner-box-temperature"
+                        />
+                    ))}
                 </div>
 
                 <button className="start-script-button" onClick={this.handleStartScript}>
