@@ -1,56 +1,47 @@
 import React, { Component } from 'react';
 import './Interface.css';
 import AASA_logo from '../assets/AASA_logo.withoutBackground.png';
-import ArduinoAPI from '../services/ArduinoAPI';
+import ArduinoAPI, { sendReadingToBackend } from '../services/ArduinoAPI';
 import WebSocketClient from '../services/WebSocketClient';
+import ReadingList from './ReadingList';
 
 class Interface extends Component {
     state = {
         logs: [],
-        currentTemperature: '...', // State to store the current temperature
-        readings: [], // State to store readings from the endpoint
+        currentTemperature: '...',
+        readings: [],
     };
 
-componentDidMount() {
-    // Fetch readings from the endpoint
-    fetch('http://localhost:8080/api/temperature')
-        .then((response) => response.json())
-        .then((data) => {
-            this.setState({ readings: data.slice(-5) }); // Keep only the last 5 readings
-        })
-        .catch((error) => {
-            console.error('Failed to fetch readings:', error);
+    componentDidMount() {
+        // Load past readings from backend
+        fetch('http://localhost:8080/api/temperature')
+            .then((res) => res.json())
+            .then((data) => {
+                const lastFive = data.slice(-5);
+                this.setState({
+                    readings: lastFive,
+                    currentTemperature: lastFive.length
+                        ? `temperature = ${(parseFloat(lastFive.at(-1).temperature) + 273.15).toFixed(2)} K`
+                        : '...',
+                });
+            })
+            .catch((err) => console.error('Failed to fetch readings:', err));
+
+        // Try to open WebSocket (optional)
+        this.webSocketClient = new WebSocketClient((reading) => {
+            const kelvin = parseFloat(reading.temperature) + 273.15;
+            this.setState((prev) => ({
+                currentTemperature: `temperature = ${kelvin.toFixed(2)} K`,
+                readings: [...prev.readings, reading].slice(-5),
+            }));
+            sendReadingToBackend(reading);
         });
 
-    // Initialize WebSocketClient and connect
-    this.webSocketClient = new WebSocketClient((data) => {
-        try {
-            const parsedData = JSON.parse(data); // Parse the JSON data
-            if (parsedData.temperature_1 !== undefined) {
-                const temperatureInKelvin = parsedData.temperature_1 + 273.15; // Convert to Kelvin
-                this.setState({ currentTemperature: `temperature = ${temperatureInKelvin.toFixed(2)} K` });
-            } else {
-                this.setState({ currentTemperature: 'Invalid data received' });
-            }
+        this.webSocketClient.connect();
+    }
 
-            // Add new reading to the list and keep only the last 5
-            const newReading = {
-                temperature: `${parsedData.temperature_1}°C`,
-                timestamp: new Date().toISOString(),
-            };
-            this.setState((prevState) => ({
-                readings: [...prevState.readings, newReading].slice(-5),
-            }));
-        } catch (err) {
-            console.error('Failed to parse WebSocket data:', err);
-            this.setState({ currentTemperature: 'Error parsing data' });
-        }
-    });
-    this.webSocketClient.connect();
-}
 
     componentWillUnmount() {
-        // Disconnect WebSocket when the component unmounts
         if (this.webSocketClient) {
             this.webSocketClient.disconnect();
         }
@@ -60,8 +51,8 @@ componentDidMount() {
         try {
             await ArduinoAPI.startScript();
             this.addLog('Script started successfully');
-        } catch (error) {
-            this.addLog(`Failed to start script: ${error.message}`);
+        } catch (err) {
+            this.addLog(`Failed to start script: ${err.message}`);
         }
     };
 
@@ -69,16 +60,12 @@ componentDidMount() {
         try {
             await ArduinoAPI.stopScript();
             this.addLog('Script stopped successfully');
-        } catch (error) {
-            this.addLog(`Failed to stop script: ${error.message}`);
+        } catch (err) {
+            this.addLog(`Failed to stop script: ${err.message}`);
         }
     };
 
-    addLog = (message) => {
-        this.setState({
-            logs: [message],
-        });
-    };
+    addLog = (msg) => this.setState({ logs: [msg] });
 
     render() {
         return (
@@ -89,9 +76,7 @@ componentDidMount() {
                 </div>
 
                 <div className="fault-codes-display">
-                    {this.state.logs.map((log, index) => (
-                        <div key={index}>{log}</div>
-                    ))}
+                    {this.state.logs.map((log, i) => <div key={i}>{log}</div>)}
                 </div>
 
                 <input
@@ -101,24 +86,10 @@ componentDidMount() {
                     className="current-box-temperature"
                 />
 
-                <div className="outer-box-temperature">
-                    {this.state.readings.slice(0, 5).map((reading, index) => (
-                        <input
-                            key={index}
-                            type="text"
-                            readOnly
-                            value={`${reading.temperature} @ ${new Date(reading.timestamp).toLocaleString()}`}
-                            className="inner-box-temperature"
-                        />
-                    ))}
-                </div>
+                <ReadingList readings={this.state.readings} />
 
-                <button className="start-script-button" onClick={this.handleStartScript}>
-                    start script
-                </button>
-                <button className="start-script-button" onClick={this.handleStopScript}>
-                    stop script
-                </button>
+                <button className="start-script-button" onClick={this.handleStartScript}>start script</button>
+                <button className="start-script-button" onClick={this.handleStopScript}>stop script</button>
             </div>
         );
     }

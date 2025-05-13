@@ -12,4 +12,17 @@ class ArduinoAPI {
     }
 }
 
+export async function sendReadingToBackend(reading) {
+    try {
+        await fetch('http://localhost:8080/api/temperature', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(reading),
+        });
+    } catch (err) {
+        console.error('[API] Failed to save reading:', err);
+    }
+}
+
+
 export default ArduinoAPI;
