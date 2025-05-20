@@ -40,7 +40,6 @@ class Interface extends Component {
         this.webSocketClient.connect();
     }
 
-
     componentWillUnmount() {
         if (this.webSocketClient) {
             this.webSocketClient.disconnect();
@@ -63,6 +62,28 @@ class Interface extends Component {
         } catch (err) {
             this.addLog(`Failed to stop script: ${err.message}`);
         }
+    };
+
+    handleExportToCSV = () => {
+        const { readings } = this.state;
+        const csvContent = [
+            ['Temperature (K)', 'Timestamp'], // Header row
+            ...readings.map((r) => [
+                (parseFloat(r.temperature) + 273.15).toFixed(2), // Convert to Kelvin
+                r.timestamp,
+            ]), // Data rows
+        ]
+            .map((row) => row.join(',')) // Join columns with commas
+            .join('\n'); // Join rows with newlines
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'readings.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     addLog = (msg) => this.setState({ logs: [msg] });
@@ -90,6 +111,7 @@ class Interface extends Component {
 
                 <button className="start-script-button" onClick={this.handleStartScript}>start script</button>
                 <button className="start-script-button" onClick={this.handleStopScript}>stop script</button>
+                <button className="start-script-button" onClick={this.handleExportToCSV}>Export to CSV</button>
             </div>
         );
     }

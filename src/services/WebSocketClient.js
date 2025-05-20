@@ -1,6 +1,6 @@
 class WebSocketClient {
     constructor(onMessage) {
-        this.url = 'ws://145.49.127.248:1880/ws/groep9';
+        this.url = 'ws://145.49.111.54:1880/ws/groep18';
         this.socket = null;
         this.onMessage = onMessage;
     }
