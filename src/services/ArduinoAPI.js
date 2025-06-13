@@ -1,6 +1,6 @@
 // src/services/ArduinoAPI.js
 
-const BASE_URL = 'http://145.49.111.54:1880/groep18';
+const BASE_URL = 'http://145.49.127.250:1880/groep18';
 
 class ArduinoAPI {
     static async startScript() {

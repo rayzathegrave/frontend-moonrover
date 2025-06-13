@@ -12,11 +12,14 @@ class Interface extends Component {
         readings: [],
     };
 
-    componentDidMount() {
-        // Load past readings from backend
-        fetch('http://localhost:8080/api/temperature')
-            .then((res) => res.json())
-            .then((data) => {
+componentDidMount() {
+    // Load past readings from backend
+    fetch('http://localhost:8080/api/temperature')
+        .then((res) => res.json())
+        .then((data) => {
+            if (data.length === 0) {
+                this.addLog('Fault: No temperature readings received from backend');
+            } else {
                 const lastFive = data.slice(-5);
                 this.setState({
                     readings: lastFive,
@@ -24,21 +27,25 @@ class Interface extends Component {
                         ? `temperature = ${(parseFloat(lastFive.at(-1).temperature) + 273.15).toFixed(2)} K`
                         : '...',
                 });
-            })
-            .catch((err) => console.error('Failed to fetch readings:', err));
-
-        // Try to open WebSocket (optional)
-        this.webSocketClient = new WebSocketClient((reading) => {
-            const kelvin = parseFloat(reading.temperature) + 273.15;
-            this.setState((prev) => ({
-                currentTemperature: `temperature = ${kelvin.toFixed(2)} K`,
-                readings: [...prev.readings, reading].slice(-5),
-            }));
-            sendReadingToBackend(reading);
+            }
+        })
+        .catch((err) => {
+            console.error('Failed to fetch readings:', err);
+            this.addLog('Fault: Unable to fetch temperature readings from backend');
         });
 
-        this.webSocketClient.connect();
-    }
+    // Try to open WebSocket (optional)
+    this.webSocketClient = new WebSocketClient((reading) => {
+        const kelvin = parseFloat(reading.temperature) + 273.15;
+        this.setState((prev) => ({
+            currentTemperature: `temperature = ${kelvin.toFixed(2)} K`,
+            readings: [...prev.readings, reading].slice(-5),
+        }));
+        sendReadingToBackend(reading);
+    });
+
+    this.webSocketClient.connect();
+}
 
     componentWillUnmount() {
         if (this.webSocketClient) {
@@ -46,23 +53,47 @@ class Interface extends Component {
         }
     }
 
-    handleStartScript = async () => {
-        try {
-            await ArduinoAPI.startScript();
-            this.addLog('Script started successfully');
-        } catch (err) {
-            this.addLog(`Failed to start script: ${err.message}`);
-        }
-    };
+handleStartScript = async () => {
+    try {
+        await ArduinoAPI.startScript();
+        this.addLog('Script started successfully');
 
-    handleStopScript = async () => {
-        try {
-            await ArduinoAPI.stopScript();
-            this.addLog('Script stopped successfully');
-        } catch (err) {
-            this.addLog(`Failed to stop script: ${err.message}`);
+        // Set a timeout to display the fault message and then stop the script
+        this.timeoutId = setTimeout(() => {
+            this.addLog('Fault: no water detected', 5000); // Display for 5 seconds
+            setTimeout(() => {
+                this.handleStopScript();
+            }, 5000); // Stop the script after the fault message duration
+        }, 60000);
+    } catch (err) {
+        this.addLog(`Failed to start script: ${err.message}`);
+    }
+};
+
+addLog = (msg, duration = null) => {
+    this.setState({ logs: [msg] }); // Replace the logs array with the new message
+
+    if (duration) {
+        setTimeout(() => {
+            this.setState({ logs: [] }); // Clear the message after the duration
+        }, duration);
+    }
+};
+
+handleStopScript = async () => {
+    try {
+        // Clear the timeout if stop script is pressed manually
+        if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
+            this.timeoutId = null;
         }
-    };
+
+        await ArduinoAPI.stopScript();
+        this.addLog('Script stopped successfully');
+    } catch (err) {
+        this.addLog(`Failed to stop script: ${err.message}`);
+    }
+};
 
     handleExportToCSV = () => {
         const { readings } = this.state;
@@ -86,14 +117,14 @@ class Interface extends Component {
         document.body.removeChild(link);
     };
 
-    addLog = (msg) => this.setState({ logs: [msg] });
+
 
     render() {
         return (
             <div className="logo-box">
                 <div className="flex justify-between w-full">
-                    <img src={AASA_logo} alt="AASA Logo" className="logo-aad" />
-                    <img src={AASA_logo} alt="AASA Logo" className="logo-aad" />
+                    <img src={AASA_logo} alt="AASA Logo" className="logo-aad"/>
+                    <img src={AASA_logo} alt="AASA Logo" className="logo-aad"/>
                 </div>
 
                 <div className="fault-codes-display">
@@ -107,7 +138,7 @@ class Interface extends Component {
                     className="current-box-temperature"
                 />
 
-                <ReadingList readings={this.state.readings} />
+                <ReadingList readings={this.state.readings}/>
 
                 <button className="start-script-button" onClick={this.handleStartScript}>start script</button>
                 <button className="start-script-button" onClick={this.handleStopScript}>stop script</button>
